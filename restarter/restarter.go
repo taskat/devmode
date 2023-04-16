@@ -7,6 +7,8 @@ import (
 	"strconv"
 	"syscall"
 	"time"
+
+	"github.com/taskat/devmode/config"
 )
 
 type Restarter struct {
@@ -19,7 +21,7 @@ func NewRestarter() *Restarter {
 }
 
 func (r *Restarter) getPid() {
-	fileName := "/tmp/server.pid"
+	fileName := config.PidFile()
 	data, err := os.ReadFile(fileName)
 	if err != nil {
 		panic("Could not read pid file: " + err.Error())
@@ -36,7 +38,7 @@ func (r *Restarter) getPid() {
 }
 
 func (r *Restarter) killServer() {
-	script := os.Getenv("KILL_SERVER_SCRIPT")
+	script := config.KillServerScript()
 	cmd := exec.Command("sh", "-c", script+" "+strconv.Itoa(r.pid))
 	cmd.Stderr = os.Stderr
 	cmd.Stdout = os.Stdout
@@ -60,7 +62,7 @@ func (r *Restarter) ShutDownServer() {
 }
 
 func (r *Restarter) StartServer() {
-	script := os.Getenv("START_SERVER_SCRIPT")
+	script := config.StartServerScript()
 	cmd := exec.Command("sh", "-c", script)
 	cmd.Stderr = os.Stderr
 	cmd.Stdout = os.Stdout
@@ -75,6 +77,7 @@ func (r *Restarter) StartServer() {
 }
 
 func (r *Restarter) waitForKill() {
+	timeout := config.WaitForServerKill()
 	for {
 		cmd := exec.Command("sh", "-c", "ps -p "+strconv.Itoa(r.pid))
 		err := cmd.Run()
@@ -85,7 +88,7 @@ func (r *Restarter) waitForKill() {
 			}
 			break
 		}
-		time.Sleep(100 * time.Millisecond)
+		time.Sleep(timeout)
 		r.killServer()
 		var waitStatus syscall.WaitStatus
 		// It shows an error on windows, but it will run on linux, so there is no real problem
